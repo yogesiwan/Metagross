@@ -4,7 +4,7 @@ import clientPromise from '@/lib/mongodb';
 const DB_NAME = 'job_list';
 const COLLECTION_NAME = 'job_applications';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);

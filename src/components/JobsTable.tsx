@@ -45,8 +45,11 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
 
   const statusOptions = ['Pending', 'Applied'];
 
-  const handleStatusChange = (jobId: string, event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = event.target.value;
+  const handleStatusChange = (
+    jobId: string,
+    _e: React.ChangeEvent<HTMLSelectElement>,
+    newStatus: string
+  ) => {
     if (onStatusChange) {
       onStatusChange(jobId, newStatus);
     }
@@ -95,7 +98,7 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
           </tr>
         </thead>
         <tbody className="bg-black divide-y divide-gray-700">
-          {jobs.map((job, index) => (
+          {jobs.map((job, _index) => (
             <React.Fragment key={job.job_id}>
               <tr
                 className={`hover:bg-gray-900 cursor-pointer ${
@@ -188,7 +191,7 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                           value={job.status || 'Pending'}
                           onChange={(e) => {
                             e.stopPropagation();
-                            handleStatusChange(job.job_id, e);
+                            handleStatusChange(job.job_id, e, e.target.value);
                           }}
                           onClick={(e) => e.stopPropagation()}
                         >

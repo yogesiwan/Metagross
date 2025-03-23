@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getJobById } from '@/lib/jobData';
 
 interface Params {
-  params: {
-    date: string;
-    id: string;
-  };
+  date: string;
+  id: string;
 }
 
 export async function GET(
   request: NextRequest,
-  context: Params
+  { params }: { params: Params }
 ) {
   try {
     // Correctly access params in App Router
-    const { id } = context.params;
+    const { id } = params;
     
     const job = await getJobById(id);
     

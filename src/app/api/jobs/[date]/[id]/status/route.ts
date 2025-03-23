@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/jobData';
 
 interface Params {
-  params: {
-    date: string;
-    id: string;
-  };
+  date: string;
+  id: string;
 }
 
 export async function PUT(
   request: NextRequest,
-  context: Params
+  { params }: { params: Params }
 ) {
   try {
     // Correctly access params in App Router
-    const { id } = context.params;
+    const { id } = params;
     
     // Parse request body to get the status
     const body = await request.json();

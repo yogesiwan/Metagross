@@ -147,6 +147,12 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
     setActiveFilter(newFilter);
   };
 
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    loadMoreJobs();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-black to-gray-900">
@@ -162,7 +168,7 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
           <p className="font-bold">Error</p>
           <p>{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={handleRetry}
             className="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
           >
             Retry

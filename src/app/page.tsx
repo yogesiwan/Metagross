@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Card from '@/components/Card';
 import Image from 'next/image';

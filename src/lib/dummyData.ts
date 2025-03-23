@@ -1,6 +1,7 @@
 import { Job } from './models/job';
 import { MongoClient, Document } from 'mongodb';
-import { format, subDays } from 'date-fns';
+import { addDays, subDays, startOfDay } from 'date-fns';
+import { ObjectId } from 'mongodb';
 
 const DB_NAME = 'job_list';
 const COLLECTION_NAME = 'job_applications';
@@ -8,7 +9,7 @@ const COLLECTION_NAME = 'job_applications';
 /**
  * Generates dummy job data for testing
  */
-export async function generateDummyData(connectionString: string, count: number = 30): Promise<boolean> {
+export async function generateDummyData(connectionString: string): Promise<boolean> {
   try {
     // Connect to MongoDB
     const client = new MongoClient(connectionString);
