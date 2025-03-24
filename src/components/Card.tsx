@@ -33,7 +33,7 @@ export default function Card({
       } transition-all duration-200 h-full`}
     >
       {icon && <div className="text-4xl">{icon}</div>}
-      <h3 className="font-semibold text-lg text-center">{title}</h3>
+      <h3 className="font-semibold text-lg text-center font-white">{title}</h3>
       {description && <p className="text-gray-500 text-sm">{description}</p>}
       
       {totalCount !== undefined && pendingCount !== undefined && (
