@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Metagross | Job Application Tracker",
-  description: "Track and manage your job applications with Metagross",
+  title: "Metagros",
+  description: "AI powered Tracker",
   icons: {
     icon: [
       { url: '/metagross3.png', type: 'image/png' }
