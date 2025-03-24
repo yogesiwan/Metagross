@@ -5,6 +5,7 @@ import { format, parse } from 'date-fns';
 import JobsTable from '@/components/JobsTable';
 import Link from 'next/link';
 import { Job } from '@/lib/models/job';
+import Image from 'next/image';
 
 export default function JobsByDatePage({ params }: { params: { date: string } }) {
   const { date } = params;
@@ -153,13 +154,6 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
     loadMoreJobs();
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-black to-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -189,71 +183,74 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
   const filters = ['All', 'Pending', 'Applied'];
 
   return (
-    <div className="container mx-auto px-4 py-8 bg-gradient-to-b from-black to-gray-900 text-gray-200 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-100">
-          Jobs for {formatDate(date)}
-          <span className="ml-2 text-sm font-normal text-gray-400">
-            ({jobs.length} {jobs.length === 1 ? 'job' : 'jobs'})
-          </span>
-        </h1>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center px-4 py-2 border border-blue-500 text-sm font-medium rounded-md shadow-sm text-blue-400 bg-transparent hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Back to Dashboard
-        </Link>
-      </div>
+    <div className="flex flex-col h-screen bg-gradient-to-b from-black to-gray-900 text-gray-200">
+      
+      {/* Header section - fixed height */}
+      <div className="container mx-auto px-4 py-4 z-10 relative">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-100">
+            {formatDate(date)}
+            <span className="ml-2 text-sm font-normal text-gray-400">
+              ({jobs.length} {jobs.length === 1 ? 'entry' : 'entries'})
+            </span>
+          </h1>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center px-4 py-2 border border-blue-500 text-sm font-medium rounded-md shadow-sm text-blue-400 bg-transparent hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
 
-      {/* Filter tabs */}
-      <div className="mb-6 border-b border-gray-700">
-        <div className="flex flex-wrap -mb-px">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => handleFilterChange(filter)}
-              className={`mr-2 inline-flex items-center py-2 px-4 text-sm font-medium ${
-                activeFilter === filter
-                  ? 'text-blue-400 border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-gray-300 hover:border-gray-600'
-              }`}
-            >
-              {filter} 
-              <span className="ml-2 bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                {statusCounts[filter as keyof typeof statusCounts]}
-              </span>
-            </button>
-          ))}
+        {/* Sticky filter tabs */}
+        <div className="sticky top-0 z-20  pt-2 pb-0 backdrop-blur-sm border-b border-blue-900/30 shadow-md">
+          <div className="flex flex-wrap -mb-px">
+            {filters.map((filter) => (
+              <button
+                key={filter}
+                onClick={() => handleFilterChange(filter)}
+                className={`mr-2 inline-flex items-center py-2 px-4 text-sm font-medium ${
+                  activeFilter === filter
+                    ? 'text-blue-400 border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                }`}
+              >
+                {filter} 
+                <span className="ml-2 bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full text-xs">
+                  {statusCounts[filter as keyof typeof statusCounts]}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
+      {/* Error message */}
       {updateStatus.error && (
-        <div className="mb-4 bg-red-900/50 border-l-4 border-red-500 text-red-200 p-4" role="alert">
-          <p>{updateStatus.error}</p>
+        <div className="container mx-auto px-4 z-10 relative">
+          <div className="mb-4 bg-red-900/50 border-l-4 border-red-500 text-red-200 p-4" role="alert">
+            <p>{updateStatus.error}</p>
+          </div>
         </div>
       )}
 
-      {filteredJobs.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">
-          No {activeFilter !== 'All' ? activeFilter : ''} jobs found for this date.
-        </div>
-      ) : (
-        <div>
-          <JobsTable 
-            jobs={filteredJobs} 
-            onStatusChange={handleStatusChange} 
-            lastRowRef={hasMore && !loadingMore ? loadMoreJobs : undefined}
-          />
-          
-          {/* Loading more indicator */}
-          {loadingMore && (
-            <div className="flex justify-center my-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-              <span className="ml-2 text-gray-300">Loading more jobs...</span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Scrollable table container */}
+      <div className="flex-1 overflow-auto container mx-auto px-4 relative z-10">
+        <JobsTable 
+          jobs={filteredJobs} 
+          onStatusChange={handleStatusChange} 
+          lastRowRef={hasMore && !loadingMore ? loadMoreJobs : undefined}
+          isLoading={loading}
+        />
+        
+        {/* Loading more indicator */}
+        {loadingMore && (
+          <div className="flex justify-center my-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+            <span className="ml-2 text-gray-300">Loading more jobs...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

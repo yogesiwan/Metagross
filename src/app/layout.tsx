@@ -13,8 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Metagross is here",
-  description: "What's up boss",
+  title: "Metagross | Job Application Tracker",
+  description: "Track and manage your job applications with Metagross",
+  icons: {
+    icon: [
+      { url: '/metagross3.png', type: 'image/png' }
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -24,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/metagross3.png" type="image/png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

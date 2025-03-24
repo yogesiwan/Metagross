@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { format, parse } from 'date-fns';
 import Card from '@/components/Card';
 import Link from 'next/link';
@@ -8,13 +8,16 @@ import JobStats from '@/components/JobStats';
 import Image from 'next/image';
 
 // Observer component that triggers when it becomes visible
-const ObserverComponent = ({ callback }: { callback: () => void }) => {
+const ObserverComponent = React.memo(({ callback }: { callback: () => void }) => {
   useEffect(() => {
     // Create the observer with proper types
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting) {
         callback();
       }
+    }, {
+      rootMargin: '200px', // Load earlier for smoother experience
+      threshold: 0.1
     });
     
     // Find and observe the element
@@ -26,7 +29,116 @@ const ObserverComponent = ({ callback }: { callback: () => void }) => {
   }, [callback]);
   
   return <div id="dates-observer" className="w-full h-10"></div>;
-};
+});
+
+ObserverComponent.displayName = 'ObserverComponent';
+
+// CSS for shimmer effect - Instagram-style loading
+const shimmerStyles = `
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 1.5s infinite linear;
+  background: linear-gradient(
+    to right,
+    rgba(33, 50, 91, 0.05) 8%, 
+    rgba(76, 130, 227, 0.2) 18%, 
+    rgba(33, 50, 91, 0.05) 33%
+  );
+  background-size: 1000px 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-base {
+  background-color: rgba(75, 85, 99, 0.1);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.skeleton-base::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.2) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+  content: '';
+}
+`;
+
+// Skeleton loaders
+const SkeletonCard = () => (
+  <div className="cursor-pointer">
+    <div className="p-4 flex flex-col gap-1 rounded-lg border border-blue-400/30 bg-blue-900/20 h-full overflow-hidden skeleton-base">
+      {/* Title placeholder */}
+      <div className="flex justify-center mb-1">
+        <div className="h-6 w-20 rounded shimmer"></div>
+      </div>
+      
+      {/* Counts section */}
+      <div className="mt-1 flex items-center justify-center space-x-4">
+        <div className="flex flex-col items-center">
+          <div className="text-[10px] text-gray-400/50 mb-1">Total</div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 rounded-full bg-blue-500/40 mr-1"></div>
+            <div className="h-4 w-5 rounded shimmer"></div>
+          </div>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="text-[10px] text-gray-400/50 mb-1">Pending</div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 rounded-full bg-yellow-500/40 mr-1"></div>
+            <div className="h-4 w-5 rounded shimmer"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Skeleton for JobStats component
+const SkeletonJobStats = () => (
+  <div className="bg-blue-900/50 p-2 rounded-lg border border-blue-400/30 text-center shadow-md skeleton-base">
+    <div className="flex space-x-6 items-center justify-center">
+      <div className="flex flex-col items-center">
+        <span className="text-xs text-gray-400/50">Total</span>
+        <div className="flex items-center mt-1">
+          <div className="w-2 h-2 rounded-full bg-blue-500/40 mr-1"></div>
+          <div className="h-6 w-8 rounded shimmer"></div>
+        </div>
+      </div>
+      <div className="flex flex-col items-center">
+        <span className="text-xs text-gray-400/50">Pending</span>
+        <div className="flex items-center mt-1">
+          <div className="w-2 h-2 rounded-full bg-yellow-500/40 mr-1"></div>
+          <div className="h-6 w-8 rounded shimmer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Add style tag for shimmer animation
+const ShimmerStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: shimmerStyles }} />
+);
 
 interface DateStat {
   date: string;
@@ -48,15 +160,28 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  // Initial data fetch
+  // Track if we're on client side for client-only features
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Initial data fetch with AbortController for cleanup
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    
     async function fetchInitialData() {
       try {
         setLoading(true);
         
-        // Fetch initial batch of dates
-        const datesResponse = await fetch('/api/jobs/dates?limit=10');
+        // Parallel requests for faster loading
+        const [datesResponse, statsResponse, statusStatsResponse] = await Promise.all([
+          fetch('/api/jobs/dates?limit=10', { signal }),
+          fetch('/api/jobs/stats', { signal }),
+          fetch('/api/jobs/status-stats', { signal })
+        ]);
         
         if (!datesResponse.ok) {
           throw new Error('Failed to fetch dates');
@@ -67,18 +192,12 @@ export default function Dashboard() {
         setCursor(datesData.nextCursor);
         setHasMore(datesData.hasMore);
         
-        // Fetch statistics
-        const statsResponse = await fetch('/api/jobs/stats');
-        
         if (!statsResponse.ok) {
           throw new Error('Failed to fetch statistics');
         }
         
         const statsData = await statsResponse.json();
         setDateStats(statsData.dateStats || []);
-        
-        // Fetch status statistics
-        const statusStatsResponse = await fetch('/api/jobs/status-stats');
         
         if (!statusStatsResponse.ok) {
           throw new Error('Failed to fetch status statistics');
@@ -89,6 +208,7 @@ export default function Dashboard() {
         
         setLoading(false);
       } catch (err) {
+        if (signal.aborted) return;
         console.error('Error fetching dashboard data:', err);
         setError('Failed to load dashboard data. Please try again later.');
         setLoading(false);
@@ -96,10 +216,14 @@ export default function Dashboard() {
     }
     
     fetchInitialData();
+    
+    return () => {
+      controller.abort();
+    };
   }, []);
 
-  // Function to load more dates
-  const loadMoreDates = async () => {
+  // Memoized function to load more dates
+  const loadMoreDates = useCallback(async () => {
     if (!hasMore || loadingMore || !cursor) return;
     
     try {
@@ -126,9 +250,10 @@ export default function Dashboard() {
       console.error('Error fetching more dates:', err);
       setLoadingMore(false);
     }
-  };
+  }, [hasMore, loadingMore, cursor]);
 
-  const formatDate = (dateStr: string) => {
+  // Memoized format date function
+  const formatDate = useCallback((dateStr: string) => {
     try {
       // Parse the date (format from API is YYYY-MM-DD)
       const date = parse(dateStr, 'yyyy-MM-dd', new Date());
@@ -138,29 +263,21 @@ export default function Dashboard() {
       console.error('Error formatting date:', e);
       return dateStr;
     }
-  };
+  }, []);
 
-  // Find status stats for a specific date
-  const getStatusStatForDate = (dateStr: string) => {
+  // Memoized stats lookup
+  const getStatusStatForDate = useCallback((dateStr: string) => {
     return statusStats.find(stat => stat.date === dateStr) || { 
       date: dateStr, 
       totalCount: 0, 
       pendingCount: 0 
     };
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  }, [statusStats]);
 
   if (error) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mx-4 max-w-md" role="alert">
           <p className="font-bold">Error</p>
           <p>{error}</p>
           <button
@@ -174,108 +291,108 @@ export default function Dashboard() {
     );
   }
 
-  if (dates.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Job Application Dashboard</h1>
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                No job application data found. Generate some dummy data to get started.
-              </p>
-              <p className="mt-3 text-sm">
-                <Link
-                  href="/api/seed"
-                  className="font-medium text-yellow-700 underline hover:text-yellow-600"
-                >
-                  Generate Data (10 days × 30+ jobs)
-                </Link>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen container mx-auto px-4 py-8 bg-gradient-to-b from-black to-blue-900">
-      <div className="relative mb-12">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-100">Dashboard</h1>
-          <Link
-            href="/"
-            className="inline-flex items-center px-4 py-2 border border-blue-500 text-sm font-medium rounded-md shadow-sm text-blue-400 bg-transparent hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Back to Home
-          </Link>
-        </div>
-        
-        {/* Logo positioned to be responsive and centered */}
-        <div className="absolute top-0 left-0 right-0 flex justify-center items-center pointer-events-none">
-          <Image src="/metagross2.png" alt="logo" width={200} height={100} />
-        </div>
-        
-        {dateStats.length > 0 && statusStats.length > 0 && (
-          <div className="absolute top-0 right-40">
-            <JobStats dateStats={dateStats} statusStats={statusStats} />
+    <div className="h-screen flex flex-col bg-gradient-to-b from-black to-blue-900">
+      <ShimmerStyles />
+      
+      {/* Fixed header area - improved for mobile */}
+      <div className="w-full px-4 py-4">
+        <div className="relative max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-100 mb-4 sm:mb-0">Dashboard</h1>
+            <Link
+              href="/"
+              className="inline-flex items-center px-4 py-2 border border-blue-500 text-sm font-medium rounded-md shadow-sm text-blue-400 bg-transparent hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Back to Home
+            </Link>
           </div>
-        )}
+          
+          {/* Logo positioned to be responsive and centered */}
+          <div className="absolute top-0 left-0 right-0 flex justify-center items-center pointer-events-none">
+            {isClient && (
+              <Image 
+                src="/metagross.png" 
+                alt="logo" 
+                width={800} 
+                height={100} 
+                className="opacity-12 hidden sm:block" 
+                priority={false}
+                loading="lazy"
+              />
+            )}
+          </div>
+          
+          {loading ? (
+            <div className="hidden sm:block absolute top-0 right-40">
+              <SkeletonJobStats />
+            </div>
+          ) : (
+            dateStats.length > 0 && statusStats.length > 0 && (
+              <div className="mt-4 sm:mt-0 sm:absolute sm:top-0 sm:right-40">
+                <JobStats dateStats={dateStats} statusStats={statusStats} />
+              </div>
+            )
+          )}
+        </div>
       </div>
       
-      {!loading && !error && dates.length > 0 && (
-        <div className="grid grid-cols-1 gap-8 mt-12">
-          <div className="mb-4">
-            <h2 className="text-xl font-medium text-gray-300 mb-5">Job Applications by Date</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {dates.map((dateStr) => {
-                const stats = getStatusStatForDate(dateStr);
-                
-                return (
-                  <div key={dateStr}>
-                    <Card
-                      title={formatDate(dateStr)}
-                      href={`/dashboard/${dateStr}`}
-                      totalCount={stats.totalCount}
-                      pendingCount={stats.pendingCount}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Observer element for infinite scrolling */}
-            {hasMore && !loadingMore && (
-              <ObserverComponent callback={loadMoreDates} />
-            )}
-            
-            {/* Loading indicator for pagination */}
-            {loadingMore && (
-              <div className="flex justify-center mt-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-                <span className="ml-2 text-gray-300">Loading more...</span>
-              </div>
-            )}
-          </div>
+      {/* Sticky header for stats section */}
+      <div className="sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 py-2">
+          <h2 className="text-xl font-medium text-gray-300">Stat's Till Now</h2>
         </div>
-      )}
+      </div>
       
-      {!loading && !error && dates.length > 0 && (
-        <div className="mt-8">
-          <Link 
-            href="/api/seed" 
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Regenerate Data (10 days × 30+ jobs)
-          </Link>
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-auto px-4 py-2">
+        <div className="max-w-7xl mx-auto">
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mt-3">
+              {Array(6).fill(0).map((_, index) => (
+                <div key={index}>
+                  <SkeletonCard />
+                </div>
+              ))}
+            </div>
+          ) : (
+            dates.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mt-3 pb-4">
+                {dates.map((dateStr) => {
+                  const stats = getStatusStatForDate(dateStr);
+                  
+                  return (
+                    <div key={dateStr}>
+                      <Card
+                        title={formatDate(dateStr)}
+                        href={`/dashboard/${dateStr}`}
+                        totalCount={stats.totalCount}
+                        pendingCount={stats.pendingCount}
+                      />
+                    </div>
+                  );
+                })}
+                
+                {/* Observer element for infinite scrolling */}
+                {hasMore && !loadingMore && (
+                  <ObserverComponent callback={loadMoreDates} />
+                )}
+              </div>
+            )
+          )}
+          
+          {/* Loading indicator for pagination */}
+          {loadingMore && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mt-3">
+              {Array(3).fill(0).map((_, index) => (
+                <div key={`skeleton-${index}`}>
+                  <SkeletonCard />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 } 

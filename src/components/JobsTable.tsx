@@ -5,6 +5,99 @@ import { Job } from '@/lib/models/job';
 import Badge from './Badge';
 import { format, parseISO } from 'date-fns';
 
+// CSS for shimmer effect - Instagram-style loading
+const shimmerStyles = `
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 1.5s infinite linear;
+  background: linear-gradient(
+    to right,
+    rgba(33, 50, 91, 0.05) 8%, 
+    rgba(76, 130, 227, 0.2) 18%, 
+    rgba(33, 50, 91, 0.05) 33%
+  );
+  background-size: 1000px 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-base {
+  background-color: rgba(75, 85, 99, 0.1);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.skeleton-base::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.2) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+  content: '';
+}
+
+/* Table specific styles */
+.sticky-header th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: rgb(17, 24, 39); /* bg-gray-900 */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  color: rgb(209, 213, 219); /* text-gray-300 - ensure consistent header text color */
+}
+
+.table-cell {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+  color: rgb(229, 231, 235); /* text-gray-200 - ensure consistent cell text color */
+}
+
+.expanded-content {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.25rem;
+}
+
+/* Ensure text colors are consistent */
+.table-text-primary {
+  color: rgb(229, 231, 235); /* text-gray-200 */
+}
+
+.table-text-secondary {
+  color: rgb(156, 163, 175); /* text-gray-400 */
+}
+
+.table-link {
+  color: rgb(129, 140, 248); /* text-indigo-400 */
+}
+
+.table-link:hover {
+  color: rgb(165, 180, 252); /* text-indigo-300 */
+}
+`;
+
+// Add style tag for shimmer animation
+const ShimmerStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: shimmerStyles }} />
+);
+
 // Observer component that triggers when it becomes visible
 const IntersectionObserverRow = ({ callback }: { callback: () => void }) => {
   useEffect(() => {
@@ -26,13 +119,86 @@ const IntersectionObserverRow = ({ callback }: { callback: () => void }) => {
   return <tr><td colSpan={7} id="observer-element" className="p-2 border-none"></td></tr>;
 };
 
+// Skeleton table rows
+const SkeletonTableRow = () => (
+  <tr className="hover:bg-gray-900/10">
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="h-5 w-24 skeleton-base shimmer rounded"></div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="h-5 w-32 skeleton-base shimmer rounded"></div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="h-5 w-20 skeleton-base shimmer rounded"></div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="h-5 w-24 skeleton-base shimmer rounded"></div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="flex items-center">
+        <div className="w-24 skeleton-base rounded-full h-2.5 mr-2">
+          <div className="shimmer h-full w-full rounded-full"></div>
+        </div>
+        <div className="h-5 w-8 skeleton-base shimmer rounded"></div>
+      </div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap">
+      <div className="h-6 w-16 skeleton-base shimmer rounded-full"></div>
+    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-right">
+      <div className="h-5 w-10 skeleton-base shimmer rounded ml-auto"></div>
+    </td>
+  </tr>
+);
+
+// Full skeleton table
+const SkeletonTable = () => (
+  <div className="overflow-x-auto">
+    <ShimmerStyles />
+    <table className="min-w-full divide-y divide-gray-700 bg-black">
+      <thead className="bg-gray-900 sticky-header">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Company
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Job Title
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Location
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Applied Date
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Grade
+            <span className="ml-1 text-xs text-gray-400">(Sorted)</span>
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Status
+          </th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-black divide-y divide-gray-700">
+        {Array(8).fill(0).map((_, index) => (
+          <SkeletonTableRow key={index} />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
 interface JobsTableProps {
   jobs: Job[];
   onStatusChange?: (jobId: string, newStatus: string) => void;
   lastRowRef?: () => void; // Changed to a callback function instead of a ref
+  isLoading?: boolean;
 }
 
-export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTableProps) {
+export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading = false }: JobsTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const toggleRow = (jobId: string) => {
@@ -64,35 +230,42 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
     }
   };
 
+  // Show skeleton loading if loading or no jobs available yet
+  if (isLoading) {
+    return <SkeletonTable />;
+  }
+
   if (!jobs || jobs.length === 0) {
-    return <div className="text-center py-8 text-gray-400">No jobs found for this date.</div>;
+    return <div className="text-center py-8 text-gray-400">Nothing to show for this date.</div>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-700 bg-black">
-        <thead className="bg-gray-900">
+    <div className="overflow-x-auto relative">
+      <ShimmerStyles />
+      {/* Background image - could be added here */}
+      <table className="min-w-full divide-y divide-gray-700 bg-black table-fixed">
+        <thead className="bg-gray-900 sticky-header">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
               Company
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-              Job Title
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
+              Title
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
               Location
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
               Applied Date
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
               Grade
               <span className="ml-1 text-xs text-gray-400">(Sorted)</span>
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/12">
               Status
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/12">
               Actions
             </th>
           </tr>
@@ -106,19 +279,19 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                 }`}
                 onClick={() => toggleRow(job.job_id)}
               >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-200">{job.company}</div>
+                <td className="px-6 py-4 whitespace-nowrap table-cell">
+                  <div className="text-sm font-medium table-text-primary">{job.company}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-200">{job.title}</div>
+                <td className="px-6 py-4 whitespace-nowrap table-cell">
+                  <div className="text-sm table-text-primary">{job.title}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-400">{job.work_location}</div>
+                <td className="px-6 py-4 whitespace-nowrap table-cell">
+                  <div className="text-sm table-text-secondary">{job.work_location}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                <td className="px-6 py-4 whitespace-nowrap text-sm table-text-secondary table-cell">
                   {formatDate(job.date_applied)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap table-cell">
                   <div className="text-sm">
                     <div className="flex items-center">
                       <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
@@ -127,19 +300,19 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                           style={{ width: `${job.grade / 10}%` }}
                         ></div>
                       </div>
-                      <span className="text-gray-200">{job.grade}</span>
+                      <span className="table-text-primary">{job.grade}</span>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-6 py-4 whitespace-nowrap table-cell">
                   <Badge status={job.status || 'Pending'} />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium table-cell">
                   <a
                     href={job.job_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300 mr-4"
+                    className="table-link mr-4"
                     onClick={(e) => e.stopPropagation()}
                   >
                     View
@@ -148,33 +321,33 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
               </tr>
               {expandedRow === job.job_id && (
                 <tr className="bg-gray-900">
-                  <td colSpan={7} className="px-6 py-4">
+                  <td colSpan={7} className="px-6 py-4 expanded-content">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="font-medium text-gray-200 mb-2">Job Details</h4>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <h4 className="font-medium table-text-primary mb-2 text-base">Job Details</h4>
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Work Style:</span> {job.work_style}
                         </p>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Experience Required:</span>{' '}
                           {job.experience_required} years
                         </p>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Skills:</span>{' '}
                           {Array.isArray(job.skills) ? job.skills.join(', ') : job.skills}
                         </p>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">HR Contact:</span> {job.hr_name}
                         </p>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Listed Date:</span>{' '}
                           {formatDate(job.date_listed)}
                         </p>
-                        <p className="text-sm text-gray-400 mb-2">
+                        <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Scraped On:</span>{' '}
                           {job.scraped_on}
                         </p>
-                        <p className="text-sm text-gray-400 mb-4">
+                        <p className="text-sm table-text-secondary mb-4">
                           <span className="font-medium text-gray-300">Grade:</span>{' '}
                           <span className="font-semibold text-blue-400">{job.grade}/1000</span>
                           <div className="w-full bg-gray-700 rounded-full h-2.5 mt-1">
@@ -185,9 +358,9 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                           </div>
                         </p>
                         
-                        <h4 className="font-medium text-gray-200 mb-2">Update Status</h4>
+                        <h4 className="font-medium table-text-primary mb-2 text-base">Update Status</h4>
                         <select
-                          className="form-select rounded-md border-gray-600 bg-gray-800 text-gray-200 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-300 focus:ring-opacity-50"
+                          className="form-select rounded-md border-gray-600 bg-gray-800 text-gray-200 text-sm shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-300 focus:ring-opacity-50"
                           value={job.status || 'Pending'}
                           onChange={(e) => {
                             e.stopPropagation();
@@ -203,18 +376,18 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                         </select>
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-200 mb-2">Job Description</h4>
-                        <div className="text-sm text-gray-400 mb-4 max-h-60 overflow-y-auto">
+                        <h4 className="font-medium table-text-primary mb-2 text-base">Job Description</h4>
+                        <div className="text-sm table-text-secondary mb-4 max-h-60 overflow-y-auto">
                           {job.description}
                         </div>
                         
-                        <h4 className="font-medium text-gray-200 mb-2">Application Links</h4>
+                        <h4 className="font-medium table-text-primary mb-2 text-base">Application Links</h4>
                         <div className="flex flex-col space-y-2">
                           <a
                             href={job.job_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-400 hover:text-indigo-300 text-sm"
+                            className="table-link text-sm"
                             onClick={(e) => e.stopPropagation()}
                           >
                             Job Posting
@@ -223,7 +396,7 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                             href={job.application_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-400 hover:text-indigo-300 text-sm"
+                            className="table-link text-sm"
                             onClick={(e) => e.stopPropagation()}
                           >
                             Application Link
@@ -233,7 +406,7 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef }: JobsTabl
                               href={job.hr_link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-indigo-400 hover:text-indigo-300 text-sm"
+                              className="table-link text-sm"
                               onClick={(e) => e.stopPropagation()}
                             >
                               HR Profile
