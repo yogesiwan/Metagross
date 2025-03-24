@@ -10,22 +10,39 @@ export async function GET(_request: NextRequest) {
     const db = client.db(DB_NAME);
     const collection = db.collection(COLLECTION_NAME);
 
-    // Get total job count and pending job count by scraped_on date
-    const stats = await collection.aggregate([
+    // Extract date from date_listed for consistent grouping
+    const pipeline = [
+      {
+        $addFields: {
+          // Extract YYYY-MM-DD from date_listed
+          dateKey: {
+            $substr: ["$date_listed", 0, 10]
+          }
+        }
+      },
       { 
         $group: { 
-          _id: '$scraped_on', 
+          _id: '$dateKey', 
           totalCount: { $sum: 1 },
           pendingCount: { 
             $sum: { 
-              $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] 
+              $cond: [
+                { $or: [
+                  { $eq: ["$status", "Pending"] },
+                  { $eq: ["$status", null] }  // Also count nulls as pending
+                ]}, 
+                1, 
+                0
+              ] 
             } 
           }
         } 
       },
       { $sort: { _id: -1 } },  // Sort by date descending (newest first)
       { $limit: 10 }  // Only get stats for the last 10 dates
-    ]).toArray();
+    ];
+
+    const stats = await collection.aggregate(pipeline).toArray();
 
     // Format to a more usable structure
     const statusStats = stats.map(stat => ({

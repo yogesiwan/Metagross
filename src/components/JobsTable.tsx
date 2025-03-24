@@ -198,6 +198,26 @@ interface JobsTableProps {
   isLoading?: boolean;
 }
 
+// Helper function to calculate grade percentage
+const calculateGradePercentage = (grade: number): number => {
+  if (typeof grade !== 'number') return 0;
+  return Math.min(grade / 10, 100); // Convert grade to percentage (0-100), capped at 100%
+};
+
+// Helper function to display grade value
+const formatGrade = (grade: number): string => {
+  if (typeof grade !== 'number') return 'N/A';
+  return grade.toString();
+};
+
+// Helper to format experience required
+const formatExperience = (experience: number | { $numberInt: string } | undefined): string => {
+  if (experience === undefined) return 'Not specified';
+  if (typeof experience === 'number') return `${experience} years`;
+  if (experience.$numberInt) return `${experience.$numberInt} years`;
+  return 'Not specified';
+};
+
 export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading = false }: JobsTableProps) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -224,9 +244,15 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr === 'Pending' || dateStr === 'Unknown') return dateStr;
     try {
+      // Handle both ISO strings and date strings from MongoDB
       return format(parseISO(dateStr), 'MMM dd, yyyy');
     } catch (e) {
-      return dateStr;
+      // If parseISO fails, try parsing it differently or return as is
+      try {
+        return format(new Date(dateStr), 'MMM dd, yyyy');
+      } catch (err) {
+        return dateStr;
+      }
     }
   };
 
@@ -259,7 +285,7 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
               Applied Date
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/6">
-              Grade
+              Rating
               <span className="ml-1 text-xs text-gray-400">(Sorted)</span>
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider w-1/12">
@@ -297,10 +323,10 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
                       <div className="w-24 bg-gray-700 rounded-full h-2.5 mr-2">
                         <div 
                           className="bg-blue-600 h-2.5 rounded-full" 
-                          style={{ width: `${job.grade / 10}%` }}
+                          style={{ width: `${calculateGradePercentage(job.grade)}%` }}
                         ></div>
                       </div>
-                      <span className="table-text-primary">{job.grade}</span>
+                      <span className="table-text-primary">{formatGrade(job.grade)}</span>
                     </div>
                   </div>
                 </td>
@@ -330,11 +356,11 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
                         </p>
                         <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Experience Required:</span>{' '}
-                          {job.experience_required} years
+                          {formatExperience(job.experience_required)}
                         </p>
                         <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">Skills:</span>{' '}
-                          {Array.isArray(job.skills) ? job.skills.join(', ') : job.skills}
+                          {job.skills || 'Not specified'}
                         </p>
                         <p className="text-sm table-text-secondary mb-2">
                           <span className="font-medium text-gray-300">HR Contact:</span> {job.hr_name}
@@ -343,17 +369,21 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
                           <span className="font-medium text-gray-300">Listed Date:</span>{' '}
                           {formatDate(job.date_listed)}
                         </p>
-                        <p className="text-sm table-text-secondary mb-2">
-                          <span className="font-medium text-gray-300">Scraped On:</span>{' '}
-                          {job.scraped_on}
-                        </p>
+                        {job.scraped_on && (
+                          <p className="text-sm table-text-secondary mb-2">
+                            <span className="font-medium text-gray-300">Scraped On:</span>{' '}
+                            {job.scraped_on}
+                          </p>
+                        )}
                         <p className="text-sm table-text-secondary mb-4">
-                          <span className="font-medium text-gray-300">Grade:</span>{' '}
-                          <span className="font-semibold text-blue-400">{job.grade}/1000</span>
+                          <span className="font-medium text-gray-300">Rating:</span>{' '}
+                          <span className="font-semibold text-blue-400">
+                            {typeof job.grade === 'number' ? job.grade : 'N/A'}/1000
+                          </span>
                           <div className="w-full bg-gray-700 rounded-full h-2.5 mt-1">
                             <div 
                               className="bg-blue-600 h-2.5 rounded-full" 
-                              style={{ width: `${job.grade / 10}%` }}
+                              style={{ width: `${calculateGradePercentage(job.grade)}%` }}
                             ></div>
                           </div>
                         </p>
@@ -391,15 +421,6 @@ export default function JobsTable({ jobs, onStatusChange, lastRowRef, isLoading 
                             onClick={(e) => e.stopPropagation()}
                           >
                             Job Posting
-                          </a>
-                          <a
-                            href={job.application_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="table-link text-sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Application Link
                           </a>
                           {job.hr_link && (
                             <a

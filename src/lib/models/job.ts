@@ -2,19 +2,21 @@ export interface JobQuestion {
   question: string;
   answer: string;
   type: string;
-  previous_answer: string;
+  previous_answer: string | null;
 }
 
 export interface Job {
-  _id?: string;
+  _id?: {
+    $oid: string;
+  };
   job_id: string;
   title: string;
   company: string;
   work_location: string;
   work_style: string;
   description: string;
-  experience_required: string | number;
-  skills: string[] | string;
+  experience_required: number | { $numberInt: string };
+  skills: string;
   hr_name: string;
   hr_link: string;
   resume: string;
@@ -27,7 +29,7 @@ export interface Job {
   connect_request: string;
   grade: number;
   created_at: string;
-  scraped_on: string;
+  scraped_on?: string;
   status?: string;
   updated_at?: string;
 }
