@@ -154,7 +154,7 @@ const ParticleBackground = () => {
   }, [particles]);
   
   // Reduced alpha value to minimize rendering cost
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-80" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-100" />;
 };
 
 // Create a lazy-loaded wrapper for the ParticleBackground
@@ -220,7 +220,9 @@ export default function Home() {
       {showAnimation && <LazyParticleBackground />}
       
       {/* Background centered image - optimized with next/image priorities */}
-      <div className="absolute inset-0 flex items-center justify-center z-0 opacity-20 animate-pulse-slow">
+      <div className={`absolute inset-0 flex items-center justify-center z-0 ${
+        glowEffect ? 'opacity-50' : 'opacity-30'
+      } transition-opacity duration-1000`}>
         <Image 
           src="/metagross3.png" 
           alt="Metagross Background" 
@@ -286,7 +288,7 @@ export default function Home() {
             © 2025 Metagross | Powered by Salamance
           </p>
         </div>
-      </div>
+    </div>
     </main>
   );
 }

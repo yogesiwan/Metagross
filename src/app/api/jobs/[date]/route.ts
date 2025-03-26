@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchJobsByDate } from '@/lib/jobData';
 
-interface Params {
-  date: string;
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: { params: Params }
+  context: { params: { date: string } }
 ) {
   try {
-    // Correctly access params in App Router
-    const { date } = params;
+    // Extract date from context
+    const { date } = context.params;
     
     // Validate date format (YYYY-MM-DD)
     if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -28,12 +24,14 @@ export async function GET(
       ? parseInt(url.searchParams.get('lastGrade') || '0', 10)
       : null;
     
-    // Get paginated jobs
-    const result = await fetchJobsByDate(date, limit, lastGrade);
+    // Get paginated jobs with total count and pending count
+    const result = await fetchJobsByDate(date, limit, lastGrade, true);
     
     return NextResponse.json({ 
       date, 
       jobs: result.jobs,
+      totalCount: result.totalCount,
+      pendingCount: result.pendingCount,
       pagination: {
         hasMore: result.pagination.hasMore,
         nextGrade: result.pagination.nextGrade

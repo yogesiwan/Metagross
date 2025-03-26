@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/jobData';
 
-interface Params {
-  date: string;
-  id: string;
-}
-
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Params }
+  context: { params: { date: string; id: string } }
 ) {
   try {
-    // Correctly access params in App Router
-    const { id } = params;
+    // Extract params from context
+    const { id, date } = context.params;
     
     // Parse request body to get the status
     const body = await request.json();
@@ -25,7 +20,7 @@ export async function PUT(
       );
     }
     
-    const success = await updateJobStatus(id, status);
+    const success = await updateJobStatus(id, status, date);
     
     if (success) {
       return NextResponse.json({ success: true });

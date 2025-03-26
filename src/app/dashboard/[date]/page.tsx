@@ -6,9 +6,14 @@ import JobsTable from '@/components/JobsTable';
 import Link from 'next/link';
 import { Job } from '@/lib/models/job';
 import Image from 'next/image';
+import { useParams } from 'next/navigation';
 
-export default function JobsByDatePage({ params }: { params: { date: string } }) {
-  const { date } = params;
+export default function JobsByDatePage() {
+  // Use the useParams hook to get the date parameter from the URL
+  const params = useParams();
+  // Extract and convert date from string or string[] to string
+  const date = typeof params.date === 'string' ? params.date : params.date?.[0] || '';
+  
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>("Pending");
@@ -26,6 +31,8 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
     jobId: null,
     error: null,
   });
+  const [totalJobCount, setTotalJobCount] = useState<number>(0);
+  const [pendingJobCount, setPendingJobCount] = useState<number>(0);
 
   // Initial load of jobs
   useEffect(() => {
@@ -42,6 +49,16 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
         setJobs(data.jobs || []);
         setHasMore(data.pagination?.hasMore || false);
         setNextGrade(data.pagination?.nextGrade || null);
+        
+        // Set the total job count and pending count
+        if (data.totalCount !== undefined) {
+          setTotalJobCount(data.totalCount);
+        }
+        
+        if (data.pendingCount !== undefined) {
+          setPendingJobCount(data.pendingCount);
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching jobs:', err);
@@ -73,6 +90,16 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
         setJobs(prevJobs => [...prevJobs, ...data.jobs]);
         setHasMore(data.pagination?.hasMore || false);
         setNextGrade(data.pagination?.nextGrade || null);
+        
+        // Update total count if it changed
+        if (data.totalCount !== undefined && data.totalCount !== totalJobCount) {
+          setTotalJobCount(data.totalCount);
+        }
+        
+        // Update pending count if it changed
+        if (data.pendingCount !== undefined && data.pendingCount !== pendingJobCount) {
+          setPendingJobCount(data.pendingCount);
+        }
       } else {
         setHasMore(false);
       }
@@ -84,12 +111,24 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
     }
   };
 
+  // Calculate job counts for different statuses
+  const statusCounts = {
+    All: totalJobCount,
+    Pending: pendingJobCount,
+    Applied: totalJobCount - pendingJobCount
+  };
+
+  // Available filters
+  const filters = ['All', 'Pending', 'Applied'];
+
   // Apply filter when jobs or activeFilter changes
   useEffect(() => {
     if (activeFilter === 'All') {
       setFilteredJobs(jobs);
-    } else {
-      setFilteredJobs(jobs.filter(job => job.status === activeFilter));
+    } else if (activeFilter === 'Pending') {
+      setFilteredJobs(jobs.filter(job => job.date_applied === 'Pending' || !job.date_applied));
+    } else if (activeFilter === 'Applied') {
+      setFilteredJobs(jobs.filter(job => job.date_applied !== 'Pending' && job.date_applied));
     }
   }, [jobs, activeFilter]);
 
@@ -172,16 +211,6 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
     );
   }
 
-  // Calculate job counts for different statuses
-  const statusCounts = {
-    All: jobs.length,
-    Pending: jobs.filter(job => job.status === 'Pending').length,
-    Applied: jobs.filter(job => job.status === 'Applied').length
-  };
-
-  // Available filters
-  const filters = ['All', 'Pending', 'Applied'];
-
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-black to-gray-900 text-gray-200">
       
@@ -191,7 +220,7 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
           <h1 className="text-2xl font-bold text-gray-100">
             {formatDate(date)}
             <span className="ml-2 text-sm font-normal text-gray-400">
-              ({jobs.length} {jobs.length === 1 ? 'entry' : 'entries'})
+              ({loading ? '...' : totalJobCount} {totalJobCount === 1 ? 'entry' : 'entries'})
             </span>
           </h1>
           <Link
@@ -203,7 +232,7 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
         </div>
 
         {/* Sticky filter tabs */}
-        <div className="sticky top-0 z-20  pt-2 pb-0 backdrop-blur-sm border-b border-blue-900/30 shadow-md">
+        <div className="sticky top-0 z-20 pt-2 pb-0 backdrop-blur-sm border-b border-blue-900/30 shadow-md">
           <div className="flex flex-wrap -mb-px">
             {filters.map((filter) => (
               <button
@@ -217,7 +246,7 @@ export default function JobsByDatePage({ params }: { params: { date: string } })
               >
                 {filter} 
                 <span className="ml-2 bg-gray-800 text-gray-300 py-0.5 px-2 rounded-full text-xs">
-                  {statusCounts[filter as keyof typeof statusCounts]}
+                  {statusCounts[filter as keyof typeof statusCounts] || 0}
                 </span>
               </button>
             ))}

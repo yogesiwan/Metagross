@@ -8,11 +8,14 @@ interface BadgeProps {
 }
 
 export default function Badge({ status, size = 'medium' }: BadgeProps) {
+  // Default to Pending for null or undefined status
+  const statusText = status || 'Pending';
+  
   // Determine styles based on status
   let bgColor = 'bg-gray-100';
   let textColor = 'text-gray-800';
   
-  switch (status.toLowerCase()) {
+  switch (statusText.toLowerCase()) {
     case 'applied':
       bgColor = 'bg-green-100';
       textColor = 'text-green-800';
@@ -33,6 +36,18 @@ export default function Badge({ status, size = 'medium' }: BadgeProps) {
       bgColor = 'bg-yellow-100';
       textColor = 'text-yellow-800';
       break;
+    case 'hired':
+      bgColor = 'bg-green-200';
+      textColor = 'text-green-900';
+      break;
+    case 'declined':
+      bgColor = 'bg-orange-100';
+      textColor = 'text-orange-800';
+      break;
+    case 'expired':
+      bgColor = 'bg-gray-200';
+      textColor = 'text-gray-700';
+      break;
   }
   
   // Determine size
@@ -47,7 +62,7 @@ export default function Badge({ status, size = 'medium' }: BadgeProps) {
     <span
       className={`inline-flex items-center rounded-full font-medium ${bgColor} ${textColor} ${sizeClasses}`}
     >
-      {status}
+      {statusText}
     </span>
   );
 } 
